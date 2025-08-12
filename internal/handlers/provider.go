@@ -4,6 +4,9 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func NewProviderHandler(path string) http.Handler {
@@ -22,6 +25,9 @@ func NewProviderHandler(path string) http.Handler {
 }
 
 func ProviderHandler(w http.ResponseWriter, r *http.Request, path string) {
+	span := trace.SpanFromContext(r.Context())
+	span.SetAttributes(attribute.String("metrics.provider.path", path))
+
 	randomSleep := rand.IntN(100)
 	time.Sleep(time.Duration(randomSleep) * time.Millisecond)
 
