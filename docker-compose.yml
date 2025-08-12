@@ -1,0 +1,53 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: cmd/db/Dockerfile
+    image: go-otel-honeycomb-demo/db:local
+    container_name: go-otel-db
+    env_file:
+      - cmd/db/.env
+    ports:
+      - "8082:8082"
+    networks:
+      - appnet
+
+  provider:
+    build:
+      context: .
+      dockerfile: cmd/provider/Dockerfile
+    image: go-otel-honeycomb-demo/provider:local
+    container_name: go-otel-provider
+    env_file:
+      - cmd/provider/.env
+    ports:
+      - "8081:8081"
+    depends_on:
+      - db
+    networks:
+      - appnet
+
+  server:
+    build:
+      context: .
+      dockerfile: cmd/server/Dockerfile
+    image: go-otel-honeycomb-demo/server:local
+    container_name: go-otel-server
+    env_file:
+      - cmd/server/.env
+    environment:
+      - PROVIDER_BASE_URL=${PROVIDER_BASE_URL:-http://provider:8081}
+      - DB_BASE_URL=${DB_BASE_URL:-http://db:8082}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - provider
+      - db
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
+
+

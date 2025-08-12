@@ -21,17 +21,17 @@ func main() {
 	defer otelShutdown()
 
 	router := http.NewServeMux()
-	router.Handle("/foo", telemetry.NewHandler(handlers.NewServerHandler("foo"), "ServerHandlerFoo"))
-	router.Handle("/bar", telemetry.NewHandler(handlers.NewServerHandler("bar"), "ServerHandlerBar"))
-	router.Handle("/baz", telemetry.NewHandler(handlers.NewServerHandler("baz"), "ServerHandlerBaz"))
+	router.Handle("/foo", telemetry.NewHandler(handlers.NewProviderHandler("/foo"), "ProviderHandlerFoo"))
+	router.Handle("/bar", telemetry.NewHandler(handlers.NewProviderHandler("/bar"), "ProviderHandlerBar"))
+	router.Handle("/baz", telemetry.NewHandler(handlers.NewProviderHandler("/baz"), "ProviderHandlerBaz"))
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8081",
 		Handler: router,
 	}
 
 	go func() {
-		log.Printf("Starting server on :8080")
+		log.Printf("Starting server on :8081")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
