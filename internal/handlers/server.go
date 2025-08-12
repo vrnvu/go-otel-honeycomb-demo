@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
@@ -18,6 +19,18 @@ func NewServerHandler(path string) http.Handler {
 }
 
 func ServerHandler(w http.ResponseWriter, r *http.Request, path string) {
+	userID := r.Header.Get("User-Id")
+	if userID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User-Id header is required"))
+		return
+	}
+
+	// TODO: use baggage instead
+	// Baggage are not propagated to the next span, see telemetry/otel.go config
+	// Span attributes are propagated to the next span but we need to do them manually
+	ctx := context.WithValue(r.Context(), "user.id", userID)
+
 	if path != "foo" && path != "bar" && path != "baz" {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(fmt.Sprintf("Not Found: %s", path)))
@@ -29,7 +42,7 @@ func ServerHandler(w http.ResponseWriter, r *http.Request, path string) {
 		providerBaseURL = "http://localhost:8081"
 	}
 
-	resp, err := otelhttp.Get(r.Context(), providerBaseURL+"/"+path)
+	resp, err := otelhttp.Get(ctx, providerBaseURL+"/"+path)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -54,23 +67,23 @@ func ServerHandler(w http.ResponseWriter, r *http.Request, path string) {
 		statusMessage = "Internal Server Error"
 	}
 
-	_, span := otel.Tracer("ServerHandlerBody").Start(r.Context(), "ServerHandlerBody")
+	_, processingSpan := otel.Tracer("ServerHandlerBody").Start(ctx, "ServerHandlerBody")
 
 	randomSleep := rand.IntN(100)
 	sleepDuration := time.Duration(randomSleep) * time.Millisecond
 
-	span.AddEvent("starting body processing")
+	processingSpan.AddEvent("starting body processing")
 	time.Sleep(sleepDuration)
-	span.AddEvent("body processing complete")
+	processingSpan.AddEvent("body processing complete")
 
-	span.End()
+	processingSpan.End()
 
 	dbBaseURL := os.Getenv("DB_BASE_URL")
 	if dbBaseURL == "" {
 		dbBaseURL = "http://localhost:8082"
 	}
 
-	resp, err = otelhttp.Get(r.Context(), dbBaseURL+"/")
+	resp, err = otelhttp.Get(ctx, dbBaseURL+"/")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
